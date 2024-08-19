@@ -1,0 +1,38 @@
+
+pipeline {
+    agent any
+    tools {
+        maven "Maven 3.9.3"
+        jdk "Java 17"
+        'hudson.plugins.sonar.SonarRunnerInstallation' 'scannerSonarHome'
+    }
+    stages {
+        stage('Construcción') {
+            steps {
+                git branch: 'main', url: 'https://github.com/RodStazzi/mi_aplicacion'
+                bat "mvn clean package -DskipTests"
+            }
+            post {
+                success {
+                    echo 'Archivando artefactos'
+                    archiveArtifacts 'target/*.jar'
+                    //archiveArtifacts 'target/*.war'
+                }
+            }
+        }
+        stage('Análisis SonarQube') {
+            steps {
+            withSonarQubeEnv('SonarQubeScann') {  // Usa el nombre del servidor aquí
+                bat "mvn sonar:sonar" 
+                }
+            }
+        }
+        stage("Quality Gate") {
+            steps {
+              timeout(time: 1, unit: 'MINUTES') { //'HOURS'MINUTES
+                waitForQualityGate abortPipeline: true
+              }
+            }
+          }
+    }
+}
